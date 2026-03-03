@@ -40,8 +40,11 @@ def J(a,y):
     return fdiv(a*y,6) + log(a*y) + log(0.618)
 def Rt(a,y):
     return fdiv(J(a,y) + 0.685 + 0.155*log(a*y),a*y*(0.04962 - fdiv(0.0196,J(a,y)+1.15)))
-def Z_ve(x,m1):
-    return min(Rt(m1,x)*log(m1*x),21.233,fdiv(53.989*power(log(x*m1),4/3),power(x*m1,1/3)))
+def Z_ve(x,m1,auto):
+    if auto == True:
+        return min(min(Rt(m1,x),4.862)*log(m1*x),19.62,fdiv(51.34*power(log(x*m1),4/3),power(x*m1,1/3)))
+    else:
+        return auto
 def lnf(x,m1,option):
     if option == 1:
         C_Bellotti, B_Bellotti = BellottiTable(x*m1)
@@ -51,18 +54,13 @@ def lnf(x,m1,option):
 def upper_bound(x,m1,s1,k,option=2,auto=True):
     # This function returns the upper bound for the normalised difference of theta-functions
     # If this function outputs \delta < 1, then \theta(x + h) - \theta(x) > (1 - \delta) h..
-    if auto == True:
-        Z = Z_ve(x,m1)
-    else:
-        Z = auto
+    Z = Z_ve(x,m1,auto)
     h = k*exp(x*fdiv(k-1,k))
     delta = fdiv(k*exp(-fdiv(x,k)),x)
-    if k >= 90:
-        M = 6.391
-        pwr = 0.9
-    else:
-        M = 1.26
-        pwr = 0.2 
+    if m1 < 0.1:
+        M, pwr = 1.260, 0.2
+    if m1 < 1/85:
+        M, pwr = 6.391, 0.9
     alpha1 = 1 + 1.93378*power(10,-8)
     alpha2 = 1 + 1.936*power(10,-8)
     if option == 1:
@@ -72,9 +70,9 @@ def upper_bound(x,m1,s1,k,option=2,auto=True):
         b3 = 0
         b4 = 0
     if option == 2:
-        b1 = 17.418
+        b1 = 17.253
         b2 = 3
-        b3 = 5.272
+        b3 = 5.663
         b4 = 2
     t1 = fdiv(m1*x*exp(x*(s1 + m1 - 1)),pi) + 2*b3*power(m1*x,b4)*(power(m1*x,- fdiv(1,Z*m1)) - exp(x*(s1 - 1)))
     t2 = fdiv(2*b1*power(m1*x,b2)*x,lnf(x,m1,option))*(power(m1*x,-fdiv(lnf(x,m1,option),Z*m1*x)) - exp((s1-1)*lnf(x,m1,option)))
@@ -117,10 +115,10 @@ def min_x(k,auto=True,refine=False):
                 outcomes = []
                 for o,s in [(2,0.675)]:
                     a = optimise(mx-q,s,k,o,auto)
-                    outcomes.append((a*k,upper_bound(mx-q,a,s,k,o,auto),auto))
-                #print(k, mx - q, outcomes)
+                    outcomes.append((a*k,upper_bound(mx-q,a,s,k,o,auto),o))
                 if outcomes[0][1] < 1:
                     mx -= q
+                    final_outcomes = outcomes
                 else:
                     on = False
             else:
@@ -133,8 +131,7 @@ def min_x(k,auto=True,refine=False):
                     outcomes = []
                     for o,s in [(1,0.985)]:
                         a = optimise(mx-q,s,k,o,auto)
-                        outcomes.append((a*k,upper_bound(mx-q,a,s,k,o,auto),auto))
-                    #print(k, mx - q, outcomes)
+                        outcomes.append((a*k,upper_bound(mx-q,a,s,k,o,auto),o))
                     if outcomes[0][1] < 1:
                         mx -= q
                         final_outcomes = outcomes
@@ -142,48 +139,44 @@ def min_x(k,auto=True,refine=False):
                         on = False
                 else:
                     on = False
-    outcomes = []
-    for o,s in [(1,0.985), (2,0.675)]:
-        a = optimise(mx,s,k,o,auto)
-        outcomes.append((a*k,upper_bound(mx,a,s,k,o,auto),o))
-    for o in outcomes:
-        if o[1] < 1:
-            final_outcomes = o
-    #print(mx, final_outcomes)
     return mx, final_outcomes
 
 """
 The following code is used to compute the contents of Table 3.
 """
 
-for kay in [100 - i for i in range(31)]:
-    if kay >= 90:
-        mx_kay = min_x(kay,True,False)
-        print(kay, mx_kay[0], round(mx_kay[1][0],5))
+kay = 90
+data = [] # Collecting data for later..
+while kay >= 65:
+    mx_kay = min_x(kay,True,True)
+    mx_kay_False = min_x(kay,True,False)
+    if mx_kay[0] < mx_kay_False[0]:
+        print(f"${kay}$ & ${mx_kay_False[0]}$ & ${round(mx_kay_False[1][0][0],5)}$ & ${mx_kay[0]}$ & ${round(mx_kay[1][0][0],5)}$ \\\\")
+        data.append((kay, mx_kay[0]))
     else:
-        mx_kay = min_x(kay,True,True)
-        mx_kay_False = min_x(kay,True,False)
-        print(kay, mx_kay_False[0], round(mx_kay_False[1][0],5), mx_kay[0], round(mx_kay[1][0],5))
-
+        print(f"${kay}$ & ${mx_kay_False[0]}$ & ${round(mx_kay_False[1][0][0],5)}$ & - & - \\\\")
+        data.append((kay, mx_kay_False[0]))
+    kay -= 1
 
 """
 The following code is used to compute the contents of Table 5 (i.e., the minimal zero-free regions).
 """
 
-zed = 26.0
-kay = 100
-while kay >= 70:
+zed = 25.0
+kay = 90
+j = 0
+while kay >= 65:
     x0 = CHL_verifier(kay)
     t1, t2 = min_x(kay,zed)
-    #print(zed, t1, t2)
     for q in [0.1,0.01,0.001]:
         while t1 > x0:
             zed -= q
             t1, t2 = min_x(kay,zed)
-            #print(zed, t1, t2)
         zed += q
         t1, t2 = min_x(kay,zed)
     zed -= q
     t1, t2 = min_x(kay,zed)
-    print(kay, round(zed,3), t1, round(t2[0],5))
+    c_comp = round(t2[0][0],5)
+    print(f"${kay}$ & ${round(zed,3)}$ & ${t1}$ & ${c_comp}$ & ${round(data[j][1]*c_comp/kay,5)}$ \\\\")
     kay -= 1
+    j += 1
