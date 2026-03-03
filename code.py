@@ -7,9 +7,6 @@ from mpmath import fdiv, exp, log, pi, power, sqrt
 
 mpm.dps = 150
 
-#def lnW(x,a,b):
-#    return fdiv(3 - 8*a,3)*x - 2*log(b*x,2)
-
 ranges = [
         (80, 90,     0.9850, 3.7065573*power(10,5), 5.216),
         (90, 100,    0.9850, 4.2572147*power(10,5), 4.831),
